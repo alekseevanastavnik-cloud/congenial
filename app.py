@@ -39,8 +39,8 @@ def is_russian(text):
 
     try:
         return detect(text) == "ru"
-    except Exception:
-        return False
+   except LangDetectException:
+    return False
 
 
 def build_review_url(country, app_id, page):
@@ -63,7 +63,7 @@ def fetch_page(country, app_id, page):
             return None, url
 
         data = response.json()
-        if isinstance(data, dict) and "feed" in 
+        if isinstance(data, dict) and "feed" in data:
             return data, url
     except Exception:
         return None, url
@@ -129,7 +129,7 @@ def collect_reviews(app_id, target_year, countries, max_pages):
         for page in range(1, max_pages + 1):
             data, source_url = fetch_page(country, app_id, page)
 
-            if not 
+            if not data:
                 break
 
             rows = parse_entries(data, country, page, source_url)
