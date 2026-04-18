@@ -7,6 +7,8 @@ import requests
 import streamlit as st
 from langdetect import DetectorFactory, detect
 
+st.set_page_config(page_title="Duolingo Reviews Scraper", layout="wide")
+
 DetectorFactory.seed = 0
 
 DEFAULT_APP_ID = "570060128"
@@ -31,8 +33,8 @@ def is_russian(text):
     if not re.search(r"[А-Яа-яЁё]", text):
         return False
 
-    cleaned = re.sub(r"[^А-Яа-яЁёA-Za-z ]+", " ", text).strip()
-    if len(cleaned) < 12:
+    short_text = re.sub(r"[^А-Яа-яЁёA-Za-z ]+", " ", text).strip()
+    if len(short_text) < 12:
         return True
 
     try:
@@ -41,34 +43,32 @@ def is_russian(text):
         return False
 
 
-def build_urls(country, app_id, page):
-    return [
-        f"https://itunes.apple.com/{country}/rss/customerreviews/page={page}/id={app_id}/sortby=mostrecent/json",
-        f"https://itunes.apple.com/{country}/rss/customerreviews/id={app_id}/sortby=mostrecent/page={page}/json",
-        f"https://itunes.apple.com/{country}/rss/customerreviews/id={app_id}/sortBy=mostRecent/page={page}/json",
-        f"https://itunes.apple.com/{country}/rss/customerreviews/id={app_id}/sortBy=mostRecent/json",
-    ]
+def build_review_url(country, app_id, page):
+    return (
+        f"https://itunes.apple.com/{country}/rss/customerreviews/"
+        f"page={page}/id={app_id}/sortBy=mostRecent/json"
+    )
 
 
 def fetch_page(country, app_id, page):
+    url = build_review_url(country, app_id, page)
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Accept": "application/json,text/plain,*/*",
     }
 
-    for url in build_urls(country, app_id, page):
-        try:
-            response = requests.get(url, headers=headers, timeout=20)
-            if response.status_code != 200:
-                continue
+    try:
+        response = requests.get(url, headers=headers, timeout=20)
+        if response.status_code != 200:
+            return None, url
 
-            data = response.json()
-            if isinstance(data, dict) and "feed" in 
-                return data, url
-        except Exception:
-            continue
+        data = response.json()
+        if isinstance(data, dict) and "feed" in 
+            return data, url
+    except Exception:
+        return None, url
 
-    return None, None
+    return None, url
 
 
 def safe_get(d, *keys):
@@ -166,11 +166,11 @@ def collect_reviews(app_id, target_year, countries, max_pages):
     return raw_df, df
 
 
-def to_csv_bytes(df):
+@st.cache_data(show_spinner=False)
+def convert_df_to_csv(df):
     return df.to_csv(index=False, sep=";", encoding="utf-8-sig").encode("utf-8-sig")
 
 
-st.set_page_config(page_title="Duolingo Reviews Scraper", layout="wide")
 st.title("Duolingo App Store Reviews Scraper")
 st.write("Сбор русских отзывов Duolingo из App Store в CSV.")
 
@@ -219,7 +219,7 @@ if run_btn:
 
             st.download_button(
                 label="Скачать очищенный CSV",
-                data=to_csv_bytes(clean_df),
+                data=convert_df_to_csv(clean_df),
                 file_name=f"duolingo_reviews_ru_{target_year}.csv",
                 mime="text/csv",
             )
@@ -229,13 +229,17 @@ if run_btn:
 
             st.download_button(
                 label="Скачать raw CSV",
-                data=to_csv_bytes(raw_df),
+                data=convert_df_to_csv(raw_df),
                 file_name=f"duolingo_reviews_raw_{target_year}.csv",
                 mime="text/csv",
             )
 
+   
+        
 
-  
+
+       
+              
 
   
   
